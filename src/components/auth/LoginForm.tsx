@@ -16,17 +16,14 @@ export default function LoginForm() {
     setLoading(true);
     try {
       const data = await login(email, password);
-      console.log('Resposta da API:', data);
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
-      console.log('Login Papel:', data.user.role);
-      alert(`Login bem-sucedido! Papel: ${data.user.role}`);
 
-      if (data.user?.role === 'ADMIN') {
+      if (data.role === 'ADMIN') {
         router.push('/dashboard/admin');
-      } else if (data.user?.role === 'sindico') {
+      } else if (data.role === 'SINDICO') {
         router.push('/dashboard/sindico');
-      } else if (data.user?.role === 'morador') {
+      } else if (data.role === 'CONDOMINO') {
         router.push('/dashboard/morador');
       } else {
         setError('Tipo de usuário desconhecido');

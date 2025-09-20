@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import api from '@/services/api';
 
 function SindicoSidebar() {
   return (
@@ -41,18 +42,44 @@ function SindicoSidebar() {
   );
 }
 
-function MoradaForm() {
+// Defina o blocoId conforme sua lógica (exemplo: vindo de contexto, props, ou rota)
+const blocoId = 1; // Troque para o blocoId correto
+
+function MoradaForm({ onMoradaAdded }: { onMoradaAdded: () => void }) {
   const [numero, setNumero] = useState(0);
   const [area, setArea] = useState(0);
   const [tipo, setTipo] = useState('CASA');
   const [tipologia, setTipologia] = useState('');
   const [quota, setQuota] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Adicione integração com API aqui
-    const payload = { numero, area, tipo, tipologia, quota };
-    console.log('Cadastrar morada:', payload);
+    setLoading(true);
+    setSuccess('');
+    setError('');
+    try {
+      const token = localStorage.getItem('access_token');
+      const payload = { numero, area, tipo, tipologia, quota };
+      await api.post(`/api/v1/blocos/${blocoId}/moradias`, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setSuccess('Morada cadastrada com sucesso!');
+      setNumero(0);
+      setArea(0);
+      setTipo('CASA');
+      setTipologia('');
+      setQuota(0);
+      onMoradaAdded();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Erro ao cadastrar morada.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -91,9 +118,10 @@ function MoradaForm() {
             required
           >
             <option value="CASA">Casa</option>
-            <option value="APARTAMENTO">Apartamento</option>
             <option value="LOJA">Loja</option>
-            <option value="OUTRO">Outro</option>
+            <option value="SALA_EVENTOS">Sala de Eventos</option>
+            <option value="ESPACO_DESPORTIVO">Espaço Desportivo</option>
+            <option value="OUTROS">Outro</option>
           </select>
         </div>
         <div className="mb-4">
@@ -120,25 +148,49 @@ function MoradaForm() {
         </div>
         <button
           type="submit"
-          className="bg-amber-700 text-white px-4 py-2 rounded hover:bg-amber-800 transition-colors"
+          disabled={loading}
+          className="bg-amber-700 text-white px-4 py-2 rounded hover:bg-amber-800 transition-colors disabled:opacity-50"
         >
-          Cadastrar
+          {loading ? 'Cadastrando...' : 'Cadastrar'}
         </button>
+        {success && <p className="text-green-600 mt-4">{success}</p>}
+        {error && <p className="text-red-600 mt-4">{error}</p>}
       </form>
     </div>
   );
 }
 
-function MoradaList() {
-  // Adicione integração com API para buscar moradas
-  const moradas = [
-    { id: 1, numero: 101, area: 80, tipo: 'APARTAMENTO', tipologia: 'T2', quota: 50 },
-    { id: 2, numero: 5, area: 120, tipo: 'CASA', tipologia: 'T3', quota: 80 }
-  ];
+function MoradaList({ reload }: { reload: boolean }) {
+  const [moradas, setMoradas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchMoradas = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await api.get(`/api/v1/blocos/${blocoId}/moradias`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setMoradas(response.data);
+      } catch (err: any) {
+        setError('Erro ao buscar moradas.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMoradas();
+  }, [reload]);
 
   return (
     <div>
       <h2 className="text-amber-900 mb-4 text-xl font-semibold">Moradas Cadastradas</h2>
+      {loading && <p className="text-amber-700">Carregando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
       {moradas.map(morada => (
         <div key={morada.id} className="bg-white border rounded-lg p-6 mb-4 shadow-sm border-amber-300">
           <h3 className="text-amber-900 text-lg font-semibold">
@@ -161,14 +213,20 @@ function MoradaList() {
 }
 
 export default function MoradasPage() {
+  const [reload, setReload] = useState(false);
+
+  const handleMoradaAdded = () => {
+    setReload(r => !r);
+  };
+
   return (
     <div className="flex min-h-screen bg-white">
-        <SindicoSidebar />
+      <SindicoSidebar />
       <main className="flex-1 p-8">
         <h1 className="text-amber-900 text-3xl font-bold mb-8">Gerir Moradas</h1>
-        <MoradaForm />
+        <MoradaForm onMoradaAdded={handleMoradaAdded} />
         <div className="mt-8">
-          <MoradaList />
+          <MoradaList reload={reload} />
         </div>
       </main>
     </div>
