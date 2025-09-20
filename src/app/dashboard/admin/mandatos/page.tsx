@@ -11,7 +11,8 @@ const MandatoForm = () => {
   const [inicioMandato, setInicioMandato] = useState('');
   const [fimMandato, setFimMandato] = useState('');
   const [salario, setSalario] = useState(0);
-  const [contratoUrl, setContratoUrl] = useState('');
+  const [contratoFile, setContratoFile] = useState<File | null>(null);
+  const [contratoBase64, setContratoBase64] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -45,31 +46,86 @@ const MandatoForm = () => {
     fetchCondominios();
   }, []);
 
+  // Função para converter arquivo para Base64
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setContratoFile(file);
+    
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64String = event.target?.result as string;
+        setContratoBase64(base64String);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setContratoBase64('');
+    }
+  };
+
+  // Função para fazer download do arquivo
+  const downloadFile = (base64Data: string, fileName: string) => {
+    const link = document.createElement('a');
+    link.href = base64Data;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setSuccess('');
     setError('');
+    
     try {
       const token = localStorage.getItem('access_token');
+      
+      // Preparar dados do contrato
+      let contratoData = null;
+      if (contratoFile && contratoBase64) {
+        contratoData = {
+          fileName: contratoFile.name,
+          fileType: contratoFile.type,
+          fileSize: contratoFile.size,
+          base64Data: contratoBase64
+        };
+      }
+
       const payload = {
         sindicoId: Number(sindicoId),
         condominioId: Number(condominioId),
         inicioMandato,
         fimMandato,
         salario,
-        contratoUrl,
+        contrato: contratoData, // Enviando dados do arquivo em vez de URL
       };
+
       await api.post(`/api/v1/condominios/${condominioId}/mandatos`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       setSuccess('Mandato atribuído com sucesso!');
+      
+      // Fazer download automático do contrato (opcional)
+      if (contratoFile && contratoBase64) {
+        downloadFile(contratoBase64, `contrato_mandato_${Date.now()}_${contratoFile.name}`);
+      }
+
+      // Limpar formulário
       setSindicoId(0);
       setCondominioId(0);
       setInicioMandato('');
       setFimMandato('');
       setSalario(0);
-      setContratoUrl('');
+      setContratoFile(null);
+      setContratoBase64('');
+      
+      // Limpar input de arquivo
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Erro ao atribuir mandato.');
     } finally {
@@ -146,14 +202,21 @@ const MandatoForm = () => {
           />
         </div>
         <div className="mb-4">
-          <label className="text-amber-900 block mb-1">URL do Contrato:</label>
+          <label className="text-amber-900 block mb-1">Arquivo do Contrato:</label>
           <input
-            type="text"
-            value={contratoUrl}
-            onChange={e => setContratoUrl(e.target.value)}
+            type="file"
+            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+            onChange={handleFileChange}
             className="w-full p-2 border rounded border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-600 text-gray-900"
             required
           />
+          {contratoFile && (
+            <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-200">
+              <p className="text-sm text-amber-800">
+                <strong>Arquivo selecionado:</strong> {contratoFile.name} ({(contratoFile.size / 1024).toFixed(2)} KB)
+              </p>
+            </div>
+          )}
         </div>
         <button
           type="submit"
@@ -162,7 +225,12 @@ const MandatoForm = () => {
         >
           {loading ? 'Atribuindo...' : 'Atribuir'}
         </button>
-        {success && <p className="text-green-600 mt-4">{success}</p>}
+        {success && (
+          <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded">
+            <p className="text-green-800">{success}</p>
+            <p className="text-sm text-green-600 mt-1">O arquivo do contrato foi baixado automaticamente.</p>
+          </div>
+        )}
         {error && <p className="text-red-600 mt-4">{error}</p>}
       </form>
     </div>
