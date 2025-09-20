@@ -16,10 +16,13 @@ export default function LoginForm() {
     setLoading(true);
     try {
       const data = await login(email, password);
+      console.log('Resposta da API:', data);
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
+      console.log('Login Papel:', data.user.role);
+      alert(`Login bem-sucedido! Papel: ${data.user.role}`);
 
-      if (data.user?.role === 'admin') {
+      if (data.user?.role === 'ADMIN') {
         router.push('/dashboard/admin');
       } else if (data.user?.role === 'sindico') {
         router.push('/dashboard/sindico');
@@ -29,6 +32,7 @@ export default function LoginForm() {
         setError('Tipo de usuário desconhecido');
       }
     } catch (err: any) {
+      console.log('Erro detalhado:', err);
       setError(err.response?.data?.message || 'Erro ao fazer login');
     } finally {
       setLoading(false);

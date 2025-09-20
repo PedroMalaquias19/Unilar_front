@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminSidebar from '../AdminSidebar';
+import api from '@/services/api';
 
 const CondominiumForm = () => {
   const [nome, setNome] = useState('');
@@ -9,19 +10,45 @@ const CondominiumForm = () => {
   const [juros, setJuros] = useState(0);
   const [multaFixa, setMultaFixa] = useState(0);
   const [toleranciaDias, setToleranciaDias] = useState(0);
+  const [diaCobranca, setDiaCobranca] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Adicione integração com API aqui
-    const payload = {
-      nome,
-      descricao,
-      quota,
-      juros,
-      multaFixa,
-      toleranciaDias,
-    };
-    console.log('Cadastrar condomínio:', payload);
+    setLoading(true);
+    setSuccess('');
+    setError('');
+    try {
+      const payload = {
+        nome,
+        descricao,
+        quota,
+        juros,
+        multaFixa,
+        toleranciaDias,
+        diaCobranca,
+      };
+      const seuTokenAqui = localStorage.getItem('access_token');
+      await api.post('/api/v1/condominios', payload, {
+        headers: {
+          Authorization: `Bearer ${seuTokenAqui}`,
+        },
+      });
+      setSuccess('Condomínio cadastrado com sucesso!');
+      setNome('');
+      setDescricao('');
+      setQuota(0);
+      setJuros(0);
+      setMultaFixa(0);
+      setToleranciaDias(0);
+      setDiaCobranca(1);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Erro ao cadastrar condomínio.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -56,6 +83,7 @@ const CondominiumForm = () => {
             className="w-full p-2 border rounded border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-amber-600 text-gray-900"
             min={0}
             step="0.01"
+            required
           />
         </div>
         <div className="mb-4">
@@ -67,6 +95,7 @@ const CondominiumForm = () => {
             className="w-full p-2 border rounded border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-amber-600 text-gray-900"
             min={0}
             step="0.01"
+            required
           />
         </div>
         <div className="mb-4">
@@ -78,6 +107,7 @@ const CondominiumForm = () => {
             className="w-full p-2 border rounded border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-amber-600 text-gray-900"
             min={0}
             step="0.01"
+            required
           />
         </div>
         <div className="mb-4">
@@ -89,34 +119,74 @@ const CondominiumForm = () => {
             className="w-full p-2 border rounded border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-amber-600 text-gray-900"
             min={0}
             step="1"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label className="text-amber-900 block mb-1">Dia da Cobrança:</label>
+          <input
+            type="number"
+            value={diaCobranca}
+            onChange={(e) => setDiaCobranca(Number(e.target.value))}
+            className="w-full p-2 border rounded border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-amber-600 text-gray-900"
+            min={1}
+            max={31}
+            required
           />
         </div>
         <button
           type="submit"
-          className="bg-amber-700 text-white px-4 py-2 rounded hover:bg-amber-800 transition-colors"
+          disabled={loading}
+          className="bg-amber-700 text-white px-4 py-2 rounded hover:bg-amber-800 transition-colors disabled:opacity-50"
         >
-          Cadastrar
+          {loading ? 'Cadastrando...' : 'Cadastrar'}
         </button>
+        {success && <p className="text-green-600 mt-4">{success}</p>}
+        {error && <p className="text-red-600 mt-4">{error}</p>}
       </form>
     </div>
   );
 };
 
 const CondominiumList = () => {
-  // Adicione integração com API para buscar condomínios
-  const condominiums = [
-    { id: 1, nome: 'Condomínio Exemplo', descricao: 'Exemplo', quota: 100, juros: 2, multaFixa: 10, toleranciaDias: 5 }
-  ];
+  const [condominiums, setCondominiums] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchCondominiums = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const seuTokenAqui = localStorage.getItem('access_token');
+        const response = await api.get('/api/v1/condominios', {
+          headers: {
+            Authorization: `Bearer ${seuTokenAqui}`,
+          },
+        });
+        setCondominiums(response.data);
+      } catch (err: any) {
+        setError('Erro ao buscar condomínios.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCondominiums();
+  }, []);
 
   return (
     <div>
       <h2 className="text-amber-900 mb-4 text-xl font-semibold">Condomínios Cadastrados</h2>
+      {loading && <p className="text-amber-700">Carregando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
       {condominiums.map(cond => (
         <div key={cond.id} className="bg-white border rounded-lg p-6 mb-4 shadow-sm border-amber-300">
           <h3 className="text-amber-900 text-lg font-semibold">{cond.nome}</h3>
           <p className="text-amber-700">{cond.descricao}</p>
           <div className="text-amber-900 text-sm mb-2">
-            <span>Quota: {cond.quota} | Juros: {cond.juros}% | Multa Fixa: {cond.multaFixa} | Tolerância: {cond.toleranciaDias} dias</span>
+            <span>
+              Quota: {cond.quota} | Juros: {cond.juros}% | Multa Fixa: {cond.multaFixa} | Tolerância: {cond.toleranciaDias} dias | Dia da Cobrança: {cond.diaCobranca}
+            </span>
           </div>
           <div className="mt-4 flex gap-2">
             <button className="bg-amber-700 text-white px-3 py-1 rounded hover:bg-amber-800 transition-colors">
@@ -131,6 +201,7 @@ const CondominiumList = () => {
     </div>
   );
 };
+
 
 export default function Condominios() {
   return (

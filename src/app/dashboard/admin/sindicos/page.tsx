@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminSidebar from '../AdminSidebar';
+import api from '@/services/api';
 
 const SindicoForm = () => {
   const [nome, setNome] = useState('');
@@ -9,19 +10,42 @@ const SindicoForm = () => {
   const [password, setPassword] = useState('');
   const [NIF, setNIF] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Adicione integração com API aqui
-    const payload = {
-      nome,
-      sobrenome,
-      email,
-      password,
-      NIF,
-      telefone,
-    };
-    console.log('Cadastrar síndico:', payload);
+    setLoading(true);
+    setSuccess('');
+    setError('');
+    try {
+      const payload = {
+        nome,
+        sobrenome,
+        email,
+        password,
+        NIF,
+        telefone,
+      };
+      const seuTokenAqui = localStorage.getItem('access_token');
+      await api.post('/api/v1/auth/register/sindico', payload, {
+        headers: {
+          Authorization: `Bearer ${seuTokenAqui}`,
+        },
+      });
+      setSuccess('Síndico cadastrado com sucesso!');
+      setNome('');
+      setSobrenome('');
+      setEmail('');
+      setPassword('');
+      setNIF('');
+      setTelefone('');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Erro ao cadastrar síndico.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -90,24 +114,49 @@ const SindicoForm = () => {
         </div>
         <button
           type="submit"
-          className="bg-amber-700 text-white px-4 py-2 rounded hover:bg-amber-800 transition-colors"
+          disabled={loading}
+          className="bg-amber-700 text-white px-4 py-2 rounded hover:bg-amber-800 transition-colors disabled:opacity-50"
         >
-          Cadastrar
+          {loading ? 'Cadastrando...' : 'Cadastrar'}
         </button>
+        {success && <p className="text-green-600 mt-4">{success}</p>}
+        {error && <p className="text-red-600 mt-4">{error}</p>}
       </form>
     </div>
   );
 };
 
 const SindicoList = () => {
-  // Adicione integração com API para buscar síndicos
-  const sindicos = [
-    { id: 1, nome: 'Pedro', sobrenome: 'Silva', email: 'pedro@email.com', NIF: '123456789', telefone: '912345678' }
-  ];
+  const [sindicos, setSindicos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchSindicos = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const seuTokenAqui = localStorage.getItem('access_token');
+        const response = await api.get('/api/v1/sindicos', {
+          headers: {
+            Authorization: `Bearer ${seuTokenAqui}`,
+          },
+        });
+        setSindicos(response.data);
+      } catch (err: any) {
+        setError('Erro ao buscar síndicos.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSindicos();
+  }, []);
 
   return (
     <div>
       <h2 className="text-amber-900 mb-4 text-xl font-semibold">Síndicos Cadastrados</h2>
+      {loading && <p className="text-amber-700">Carregando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
       {sindicos.map(sindico => (
         <div key={sindico.id} className="bg-white border rounded-lg p-6 mb-4 shadow-sm border-amber-300">
           <h3 className="text-amber-900 text-lg font-semibold">{sindico.nome} {sindico.sobrenome}</h3>
