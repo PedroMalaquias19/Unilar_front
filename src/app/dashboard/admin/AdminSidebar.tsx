@@ -18,6 +18,12 @@ export default function AdminSidebar() {
         >
           Gestão de Condomínio
         </Link>
+        <Link 
+          href="/dashboard/admin/mandatos" 
+          className="text-amber-800 hover:text-amber-900 font-medium transition-colors"
+        >
+          Gestão de Mandatos
+        </Link>
       </nav>
       <div className="mt-auto pt-8">
         <button className="text-black hover:text-amber-900 hover:underline transition-colors">
