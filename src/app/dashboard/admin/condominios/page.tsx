@@ -3,6 +3,75 @@ import { useState, useEffect } from 'react';
 import AdminSidebar from '../AdminSidebar';
 import api from '@/services/api';
 
+// Adicione este componente acima ou abaixo do CondominiumList
+function AddBlocoForm({ condominioId }: { condominioId: number }) {
+  const [nomeBloco, setNomeBloco] = useState('');
+  const [numMoradias, setNumMoradias] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setSuccess('');
+    setError('');
+    try {
+      const token = localStorage.getItem('access_token');
+      await api.post(`/api/v1/condominios/${condominioId}/blocos`, {
+        nomeBloco,
+        numMoradias,
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setSuccess('Bloco cadastrado com sucesso!');
+      setNomeBloco('');
+      setNumMoradias(0);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Erro ao cadastrar bloco.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-2">
+      <div>
+        <label className="text-amber-900 text-sm">Nome do Bloco:</label>
+        <input
+          type="text"
+          value={nomeBloco}
+          onChange={e => setNomeBloco(e.target.value)}
+          className="w-full text-black p-1 border rounded border-amber-300"
+          required
+        />
+      </div>
+      <div>
+        <label className="text-amber-900 text-sm">Nº Moradias:</label>
+        <input
+          type="number"
+          value={numMoradias}
+          onChange={e => setNumMoradias(Number(e.target.value))}
+          className="w-full text-black p-1 border rounded border-amber-300"
+          min={0}
+          required
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={loading}
+        className="bg-amber-700 text-white px-2 py-1 rounded hover:bg-amber-800 transition-colors disabled:opacity-50"
+      >
+        {loading ? 'Cadastrando...' : 'Cadastrar Bloco'}
+      </button>
+      {success && <p className="text-green-600">{success}</p>}
+      {error && <p className="text-red-600">{error}</p>}
+    </form>
+  );
+}
+
 const CondominiumForm = () => {
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -180,24 +249,25 @@ const CondominiumList = () => {
       {loading && <p className="text-amber-700">Carregando...</p>}
       {error && <p className="text-red-600">{error}</p>}
       {condominiums.map(cond => (
-        <div key={cond.id} className="bg-white border rounded-lg p-6 mb-4 shadow-sm border-amber-300">
-          <h3 className="text-amber-900 text-lg font-semibold">{cond.nome}</h3>
-          <p className="text-amber-700">{cond.descricao}</p>
-          <div className="text-amber-900 text-sm mb-2">
-            <span>
-              Quota: {cond.quota} | Juros: {cond.juros}% | Multa Fixa: {cond.multaFixa} | Tolerância: {cond.toleranciaDias} dias | Dia da Cobrança: {cond.diaCobranca}
-            </span>
-          </div>
-          <div className="mt-4 flex gap-2">
-            <button className="bg-amber-700 text-white px-3 py-1 rounded hover:bg-amber-800 transition-colors">
-              Editar
-            </button>
-            <button className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors">
-              Excluir
-            </button>
-          </div>
+      <div key={cond.id} className="bg-white border rounded-lg p-6 mb-4 shadow-sm border-amber-300">
+        <h3 className="text-amber-900 text-lg font-semibold">{cond.nome}</h3>
+        <p className="text-amber-700">{cond.descricao}</p>
+        <div className="text-amber-900 text-sm mb-2">
+          <span>
+            Quota: {cond.quota} | Juros: {cond.juros}% | Multa Fixa: {cond.multaFixa} | Tolerância: {cond.toleranciaDias} dias | Dia da Cobrança: {cond.diaCobranca}
+          </span>
         </div>
-      ))}
+        <AddBlocoForm condominioId={cond.id} />
+        <div className="mt-4 flex gap-2">
+          <button className="bg-amber-700 text-white px-3 py-1 rounded hover:bg-amber-800 transition-colors">
+            Editar
+          </button>
+          <button className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors">
+            Excluir
+          </button>
+        </div>
+      </div>
+    ))}
     </div>
   );
 };
