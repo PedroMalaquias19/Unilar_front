@@ -40,9 +40,12 @@ function SindicoSidebar() {
         </Link>
       </nav>
       <div className="mt-auto pt-8">
-        <button className="text-black hover:text-amber-900 hover:underline transition-colors">
+              <Link 
+          href="/" 
+          className="text-red-600 hover:text-red-800 font-medium transition-colors"
+        >
           Sair
-        </button>
+        </Link>
       </div>
     </aside>
   );
